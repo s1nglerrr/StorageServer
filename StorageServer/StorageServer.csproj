@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<RootNamespace>StorageServer</RootNamespace>
+	</PropertyGroup>
+	<ItemGroup>
+	  <Folder Include="StorageServer.Tests\" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Remove="StorageServer.Tests\**" />
+		<Content Remove="StorageServer.Tests\**" />
+		<EmbeddedResource Remove="StorageServer.Tests\**" />
+		<None Remove="StorageServer.Tests\**" />
+	</ItemGroup>
+</Project>
