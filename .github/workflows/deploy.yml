@@ -1,0 +1,64 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - run: dotnet restore StorageServer.sln
+      - run: dotnet build StorageServer.sln --no-restore -c Release
+      - run: dotnet test StorageServer.sln --no-build -c Release
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish
+        run: dotnet publish StorageServer.csproj -c Release -o ./publish
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy files to VM
+        run: |
+          rsync -az --delete \
+            ./publish/ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/var/www/storageserver/
+
+      - name: Restart service
+        run: ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "sudo systemctl restart storageserver"
+
+      - name: Health check
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} '
+            for i in $(seq 1 15); do
+              curl -sf http://localhost:5001/api/health >/dev/null && echo OK && exit 0
+              sleep 2
+            done
+            echo "Приложение не ответило"; exit 1'
