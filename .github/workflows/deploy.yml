@@ -37,7 +37,7 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Publish
-        run: dotnet publish StorageServer.csproj -c Release -o ./publish
+        run: dotnet publish StorageServer/StorageServer.csproj -c Release -o ./publish
 
       - name: Prepare SSH
         run: |
